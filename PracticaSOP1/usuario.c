@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <fcntl.h>
-#include "cuenta.h"  // Incluimos la definición de struct Cuenta
+#include "cuenta.h"  // Suponemos que contiene la definición de struct Cuenta
 
 sem_t *semaforo;
 
@@ -11,15 +11,18 @@ struct Operacion {
     int tipo; // 1: Depósito, 2: Retiro, 3: Transferencia
     int num_cuenta;
     float monto;
-    int num_cuenta_destino;
+    int num_cuenta_destino; // Para transferencia (no implementado aún)
 };
 
 void *realizar_operacion(void *arg) {
     struct Operacion *op = (struct Operacion *)arg;
+
+    // Sección crítica: acceso al archivo
     sem_wait(semaforo);
     FILE *archivo = fopen("data/cuentas.dat", "r+b");
     if (!archivo) {
         perror("Error al abrir cuentas.dat");
+        sem_post(semaforo);  // Liberar semáforo antes de salir
         exit(1);
     }
 
@@ -37,7 +40,8 @@ void *realizar_operacion(void *arg) {
         }
     }
     fclose(archivo);
-    sem_post(semaforo);
+    sem_post(semaforo);  // Liberar semáforo después de la sección crítica
+
     free(op);
     return NULL;
 }
@@ -51,45 +55,67 @@ int main() {
 
     int opcion, num_cuenta;
     float monto;
+
     while (1) {
         printf("\n1. Depósito\n2. Retiro\n3. Transferencia\n4. Consultar saldo\n5. Salir\nOpción: ");
         scanf("%d", &opcion);
-        if (opcion == 5) break;
 
-        if (opcion >= 1 && opcion <= 4) {
-            printf("Número de cuenta: ");
-            scanf("%d", &num_cuenta);
-        }
+        switch (opcion) {
+            case 1: // Depósito
+            case 2: // Retiro
+            case 3: // Transferencia
+                printf("Número de cuenta: ");
+                scanf("%d", &num_cuenta);
+                printf("Monto: ");
+                scanf("%f", &monto);
 
-        if (opcion == 4) {
-            sem_wait(semaforo);
-            FILE *archivo = fopen("data/cuentas.dat", "rb");
-            if (!archivo) {
-                perror("Error al abrir cuentas.dat");
-                exit(1);
-            }
-            struct Cuenta cuenta;
-            while (fread(&cuenta, sizeof(struct Cuenta), 1, archivo)) {
-                if (cuenta.numero_cuenta == num_cuenta) {
-                    printf("Saldo: %.2f\n", cuenta.saldo);
-                    break;
+                struct Operacion *op = malloc(sizeof(struct Operacion));
+                op->tipo = opcion;
+                op->num_cuenta = num_cuenta;
+                op->monto = monto;
+
+                pthread_t hilo;
+                pthread_create(&hilo, NULL, realizar_operacion, op);
+                pthread_detach(hilo);
+                break;
+
+            case 4: // Consultar saldo
+                printf("Número de cuenta: ");
+                scanf("%d", &num_cuenta);
+
+                sem_wait(semaforo);  // Proteger la lectura
+                FILE *archivo = fopen("data/cuentas.dat", "rb");
+                if (!archivo) {
+                    perror("Error al abrir cuentas.dat");
+                    sem_post(semaforo);
+                    exit(1);
                 }
-            }
-            fclose(archivo);
-            sem_post(semaforo);
-        } else if (opcion >= 1 && opcion <= 3) {
-            printf("Monto: ");
-            scanf("%f", &monto);
-            struct Operacion *op = malloc(sizeof(struct Operacion));
-            op->tipo = opcion;
-            op->num_cuenta = num_cuenta;
-            op->monto = monto;
+                struct Cuenta cuenta;
+                int encontrada = 0;
+                while (fread(&cuenta, sizeof(struct Cuenta), 1, archivo)) {
+                    if (cuenta.numero_cuenta == num_cuenta) {
+                        printf("Saldo: %.2f\n", cuenta.saldo);
+                        encontrada = 1;
+                        break;
+                    }
+                }
+                if (!encontrada) {
+                    printf("Cuenta no encontrada.\n");
+                }
+                fclose(archivo);
+                sem_post(semaforo);  // Liberar semáforo
+                break;
 
-            pthread_t hilo;
-            pthread_create(&hilo, NULL, realizar_operacion, op);
-            pthread_detach(hilo);
+            case 5: // Salir
+                sem_close(semaforo);
+                printf("Saliendo...\n");
+                exit(0);
+
+            default:
+                printf("Opción no válida.\n");
+                break;
         }
     }
-    sem_close(semaforo);
+
     return 0;
 }
