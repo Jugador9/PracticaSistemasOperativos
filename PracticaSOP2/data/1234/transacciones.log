@@ -1,0 +1,7 @@
+[2025-05-19 20:07:25] Operación: Transferencia, Cuenta origen: 1234, Cuenta destino: 8888, Monto: 100.00
+[2025-05-19 20:07:35] Operación: Transferencia, Cuenta origen: 1234, Cuenta destino: 8888, Monto: 100.00
+[2025-05-19 20:07:45] Operación: Transferencia, Cuenta origen: 1234, Cuenta destino: 8888, Monto: 100.00
+[2025-05-19 20:08:05] Operación: Transferencia, Cuenta origen: 1234, Cuenta destino: 8888, Monto: 100.00
+[2025-05-19 20:08:59] Operación: Transferencia, Cuenta origen: 1234, Cuenta destino: 8888, Monto: 1001.00
+[2025-05-19 20:09:15] Operación: Transferencia, Cuenta origen: 1234, Cuenta destino: 8888, Monto: 100.00
+[2025-05-19 20:12:00] Operación: Consulta de saldo, Cuenta: 1234, Monto: 0.00
